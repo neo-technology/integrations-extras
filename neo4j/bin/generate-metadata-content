@@ -3,7 +3,7 @@
 import csv
 import sys
 
-from datadog_checks.neo4j_enterprise import NAMESPACE, Neo4jEnterpriseCheck
+from datadog_checks.neo4j import NAMESPACE, Neo4jCheck
 
 
 def _main():
@@ -13,7 +13,7 @@ def _main():
         exit(1)
     metadata_file = sys.argv[1]
 
-    whitelisted_metrics = Neo4jEnterpriseCheck.get_whitelisted_metrics()
+    whitelisted_metrics = Neo4jCheck.get_whitelisted_metrics()
     metrics_info = _get_metrics_info()
 
     with open(metadata_file, mode='w') as csv_file:
@@ -51,7 +51,7 @@ class Info:
         return dict(
             metric_name='{}.{}'.format(namespace, metric_name), metric_type=self.metric_type,
             interval=self.interval, unit_name=self.unit_name, per_unit_name=self.per_unit_name,
-            description=self.description, orientation=self.orientation, integration='neo4j_enterprise',
+            description=self.description, orientation=self.orientation, integration='neo4j',
             short_name=short_name,
         )
 
