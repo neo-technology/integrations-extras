@@ -34,14 +34,34 @@ class Neo4jCheck(PrometheusCheck):
         endpoint = 'http://{}:{}/metrics'.format(config.host, config.port)
         metrics = self.scrape_metrics(endpoint=endpoint)
 
+        per_db_metrics = []
+        if config.neo4j_version.startswith("4."):
+            per_db_metrics = extract_per_database_metrics(metrics)
+
         for metric in metrics:
-            metric.name = metric.name.replace('neo4j_', '', 1)
+            # Split
+            #   neo4j_mydb_some_metric_total
+            # into
+            #   [neo4j, mydb, some_metric_total]
+            #
+            # maybe_db_name because this may be a global metric, in which case the
+            # maybe_db_name word is just part of the metric name; see the else branch
             db_name = GLOBAL_DB_NAME
-            if config.neo4j_version.startswith("4."):
-                neo4j_db = self._get_db_for_metric(dbs=config.neo4j_dbs, metric_name=metric.name)
-                if neo4j_db:
-                    db_name = neo4j_db
-                    metric.name = metric.name.replace('{}_'.format(db_name), '', 1)
+            prefix, maybe_db_name, metric_name = metric.name.split("_", 2)
+
+            # Check if this is a per-db metric; else branch deals with globals
+            for per_db_metric in per_db_metrics:
+                if metric_name == per_db_metric:
+                    metric.name = metric_name
+                    db_name = maybe_db_name
+                    break
+            else:
+                metric.name = "_".join([maybe_db_name, metric_name])
+
+            if config.neo4j_dbs:
+                # If set to non-empty list, only include metrics from selected databases
+                if db_name != GLOBAL_DB_NAME and db_name not in config.neo4j_dbs:
+                    continue
 
             tags = ['db_name:{}'.format(db_name)]
             if config.instance_tags:
@@ -227,3 +247,25 @@ class Neo4jCheck(PrometheusCheck):
             'vm_thread_count': 'vm.thread.count',
             'vm_thread_total': 'vm.thread.total',
         }
+
+
+def extract_per_database_metrics(metrics):
+    """
+    Find the per-database metric names by looking at the well-known neo4j_system_
+    metric prefix, returns a list of local metric names.
+
+    Eg if you give this function a list of metrics including one named
+    "neo4j_system_my_metric", it will return ["my_metric"].
+
+    That list can then be used to tell if metrics for other databases, like
+    "neo4j_mydb_my_metric" is a global or per-database metric.
+
+    This stems from a problem of the metrics not being namespaced as global/local,
+    so a database named "db" collides with the global metrics found under "neo4j_db_.."
+    """
+    out = []
+    for metric in metrics:
+        if not metric.name.startswith("neo4j_system_"):
+            continue
+        out.append(metric.name[len('neo4j_system_'):])
+    return out

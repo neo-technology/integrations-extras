@@ -36,9 +36,9 @@ def test_service_check(aggregator, instance):
 def test_get_db_for_metric():
     check = Neo4jCheck('neo4j', {}, {})
 
-    assert check._get_db_for_metric(dbs=['neo4j', 'system'], metric_name='neo4j_metric_1') == 'neo4j'
-    assert check._get_db_for_metric(dbs=['neo4j', 'system'], metric_name='system_metric_1') == 'system'
-    assert check._get_db_for_metric(dbs=['neo4j', 'system'], metric_name='metric_1') is None
+    assert check._get_db_for_metric(metric_name='neo4j_metric_1') == 'neo4j'
+    assert check._get_db_for_metric(metric_name='system_metric_1') == 'system'
+    assert check._get_db_for_metric(metric_name='metric_1') is None
 
 
 @pytest.mark.unit
