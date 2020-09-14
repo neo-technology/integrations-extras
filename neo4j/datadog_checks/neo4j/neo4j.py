@@ -58,9 +58,6 @@ class Neo4jCheck(PrometheusCheck):
             else:
                 db_name, metric_name = metric.name.replace("neo4j_database_", "", 1).split("_", 1)
                 metric.name = metric_name
-                # Exclude databases not in neo4j_dbs, if that config is set
-                if config.neo4j_dbs and db_name not in config.neo4j_dbs:
-                    continue
 
             tags = ['db_name:{}'.format(db_name)]
             if config.instance_tags:
