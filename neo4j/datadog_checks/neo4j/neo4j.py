@@ -43,11 +43,14 @@ class Neo4jCheck(PrometheusCheck):
         print('fofofofo')
         for metric in metrics:
             print(f'fififi: {metric}')
-            if metric.name.startswith("neo4j_dbms_") or metric.name.startswith("neo4j_database_"):
-                continue
-            print(f'fufufu: {metric}')
-            is_namespaced = False
-            break
+            if metric and metric.name:
+                if metric.name.startswith("neo4j_dbms_") or metric.name.startswith("neo4j_database_"):
+                    continue
+                print(f'fufufu: {metric}')
+                is_namespaced = False
+                break
+            else:
+                print(f'lalalalaa')
 
         self._check_namespaced_metrics(metrics, config)
 
