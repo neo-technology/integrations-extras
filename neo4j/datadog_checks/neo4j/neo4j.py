@@ -32,6 +32,7 @@ class Neo4jCheck(PrometheusCheck):
         self.exclude_labels = config.exclude_labels
 
         endpoint = 'http://{}:{}/metrics'.format(config.host, config.port)
+        print(f'fafafafa: {endpoint}')
         self._check_metrics(self.scrape_metrics(endpoint=endpoint), config)
 
     def _check_metrics(self, metrics, config):
@@ -39,6 +40,7 @@ class Neo4jCheck(PrometheusCheck):
         # Finding this dynamically lets users roll out this feature without interrupting their metrics,
         # as well as monitoring database fleets with mixed values for this setting.
         is_namespaced = True
+        print('fofofofo')
         for metric in metrics:
             print(f'fififi: {metric}')
             if metric.name.startswith("neo4j_dbms_") or metric.name.startswith("neo4j_database_"):
