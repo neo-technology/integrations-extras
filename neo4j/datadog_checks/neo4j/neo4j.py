@@ -32,8 +32,7 @@ class Neo4jCheck(PrometheusCheck):
         self.exclude_labels = config.exclude_labels
 
         endpoint = 'http://{}:{}/metrics'.format(config.host, config.port)
-        if "411135ec" in endpoint: 
-            self._check_metrics(self.scrape_metrics(endpoint=endpoint), config)
+        self._check_metrics(self.scrape_metrics(endpoint=endpoint), config)
 
     def _check_metrics(self, metrics, config):
         # Determine if metrics.namespaces.enabled is set in the target Neo4j instance
