@@ -246,6 +246,9 @@ class Neo4jCheck(PrometheusCheck):
             'transaction_tx_size_heap': 'transaction.tx_size_heap',
             'transaction_tx_size_native': 'transaction.tx_size_native',
             #
+            # query metrics
+            'db_query_execution_latency_millis': 'db.query.execution.latency',
+            #
             # JVM GC metrics
             'vm_gc_count_g1_old_generation_total': 'vm.gc.count.g1_old_generation',
             'vm_gc_count_g1_young_generation_total': 'vm.gc.count.g1_young_generation',

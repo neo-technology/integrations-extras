@@ -59,6 +59,7 @@ neo4j.check_point.total_time,gauge,,,,The total time spent in check pointing so 
 neo4j.check_point.duration,gauge,,,,The duration of the last check point event.,0,neo4j,check point duration
 neo4j.cypher.replan_events,gauge,,,,The total number of times Cypher has decided to re-plan a query.,0,neo4j,cypher replan events
 neo4j.cypher.replan_wait_time,gauge,,,,The total number of seconds waited between query replans.,0,neo4j,cypher replan wait time
+db.query.execution.latency,histogram,,,,Query latencies since process start,0,neo4j,query latencies
 neo4j.node_count,gauge,,,,The total number of nodes.,0,neo4j,node count
 neo4j.relationship_count,gauge,,,,The total number of relationships.,0,neo4j,relationship count
 neo4j.ids_in_use.node,gauge,,,,The total number of nodes stored in the database.,0,neo4j,ids in use node
