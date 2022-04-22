@@ -96,6 +96,7 @@ tmp
 # Common IDEs & editors
 .idea/
 .vscode/
+*.iml
 
 # wheels
 wheelhouse/
@@ -103,6 +104,16 @@ wheelhouse/
 
 .pytest_cache
 
+# Type checking
+.mypy_cache
+
 # by default, ignore in-toto metadata from the command line
 .links/
 *.link
+
+## Kind
+.kube
+
+# pyenv versioning
+.python-version
+

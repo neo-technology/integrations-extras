@@ -20,9 +20,11 @@
   "type": "check",
   "is_public": true,
   "metric_prefix": "storm.",
+  "metric_to_check": "storm.bolt.last_60.acked",
   "assets": {
     "monitors": {},
     "dashboards": {},
-    "service_checks": "/assets/service_checks.json"
+    "service_checks": "assets/service_checks.json",
+    "metrics_metadata": "metadata.csv"
   }
 }

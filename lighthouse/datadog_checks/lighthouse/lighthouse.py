@@ -3,21 +3,30 @@ import json
 from datadog_checks.base import AgentCheck
 from datadog_checks.base.errors import CheckException
 from datadog_checks.base.utils.common import round_value as round
-from datadog_checks.utils.subprocess_output import get_subprocess_output
+from datadog_checks.base.utils.subprocess_output import get_subprocess_output
 
 EXPECTED_RESPONSE_CODE = "NO_ERROR"
+CHROME_FLAGS = ['--headless']
 
 
 class LighthouseCheck(AgentCheck):
     def check(self, instance):
         lighthouse_url = instance.get('url')
         lighthouse_name = instance.get('name')
+        extra_chrome_flags = instance.get('extra_chrome_flags', [])
 
         if not lighthouse_url or not lighthouse_name:
             self.log.error("missing instance url or name")
             raise CheckException("missing lighthouse instance url or name, please fix yaml")
 
-        cmd = ["lighthouse", lighthouse_url, "--output", "json", "--quiet", "--chrome-flags='--headless'"]
+        cmd = [
+            "lighthouse",
+            lighthouse_url,
+            "--output",
+            "json",
+            "--quiet",
+            "--chrome-flags='{}'".format(" ".join(CHROME_FLAGS + extra_chrome_flags)),
+        ]
 
         json_string, error_message, exit_code = LighthouseCheck._get_lighthouse_report(cmd, self.log, False)
 
@@ -35,11 +44,13 @@ class LighthouseCheck(AgentCheck):
             raise CheckException(error_message, exit_code, e)
 
         if data.get("runtimeError", {"code": EXPECTED_RESPONSE_CODE}).get("code") == EXPECTED_RESPONSE_CODE:
-            score_accessibility = round(data.get("categories", {}).get("accessibility", {}).get("score", 0) * 100)
-            score_best_practices = round(data.get("categories", {}).get("best-practices", {}).get("score", 0) * 100)
-            score_performance = round(data.get("categories", {}).get("performance", {}).get("score", 0) * 100)
-            score_pwa = round(data.get("categories", {}).get("pwa", {}).get("score", 0) * 100)
-            score_seo = round(data.get("categories", {}).get("seo", {}).get("score", 0) * 100)
+            score_accessibility = round(((data.get("categories", {}).get("accessibility", {}).get("score") or 0) * 100))
+            score_best_practices = round(
+                ((data.get("categories", {}).get("best-practices", {}).get("score") or 0) * 100)
+            )
+            score_performance = round(((data.get("categories", {}).get("performance", {}).get("score") or 0) * 100))
+            score_pwa = round(((data.get("categories", {}).get("pwa", {}).get("score") or 0) * 100))
+            score_seo = round(((data.get("categories", {}).get("seo", {}).get("score") or 0) * 100))
         else:
             err_code = data.get("runtimeError", {}).get("code")
             err_msg = data.get("runtimeError", {}).get("message")

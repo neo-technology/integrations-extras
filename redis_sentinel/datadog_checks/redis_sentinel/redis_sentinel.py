@@ -3,19 +3,37 @@ from collections import defaultdict
 
 import redis
 
-from datadog_checks.base import AgentCheck
+from datadog_checks.base import AgentCheck, ConfigurationError
 
 EVENT_TYPE = SOURCE_TYPE_NAME = 'redis_sentinel'
 
 
 class RedisSentinelCheck(AgentCheck):
-    def __init__(self, name, init_config, agentConfig, instances=None):
-        AgentCheck.__init__(self, name, init_config, agentConfig, instances)
+    def __init__(self, name, init_config, instances=None):
+        super(RedisSentinelCheck, self).__init__(name, init_config, instances)
         self._masters = defaultdict(lambda: "")
+
+    def _load_config(self, instance):
+        host = instance.get('sentinel_host')
+        port = instance.get('sentinel_port')
+
+        if not host or not port:
+            raise ConfigurationError('Configuration error, please fix redis_sentinel configuration')
+
+        if not isinstance(port, int):
+            raise ConfigurationError('Configuration error. "sentinel_port" must be an int.')
+
+        passwd = instance.get('sentinel_password', None)
+
+        return host, port, passwd
 
     def check(self, instance):
         self.log.info(instance)
-        redis_conn = redis.StrictRedis(host=instance['sentinel_host'], port=int(instance['sentinel_port']), db=0)
+
+        host, port, password = self._load_config(instance)
+
+        redis_conn = redis.StrictRedis(host=host, port=port, password=password, db=0)
+
         for master_name in instance['masters']:
             base_tags = ['redis_name:%s' % master_name] + instance.get('tags', [])
             try:
@@ -30,29 +48,29 @@ class RedisSentinelCheck(AgentCheck):
 
     def _process_sentinels_stats(self, redis_conn, master_name, base_tags, master_tags):
         """
-            [{
-                'down-after-milliseconds': 5000,
-                'flags': 's_down,sentinel',
-                'ip': '10.1.2.3',
-                'is_disconnected': False,
-                'is_master': False,
-                'is_master_down': False,
-                'is_odown': False,
-                'is_sdown': True,
-                'is_sentinel': True,
-                'is_slave': False,
-                'last-hello-message': 12345678,
-                'last-ok-ping-reply': 12345678,
-                'last-ping-reply': 12345679
-                'last-ping-sent': 12345678,
-                'name': '10.1.2.3:26379',
-                'link-pending-commands': 78,
-                'port': 26379,
-                'runid': '123456789abcdef',
-                's-down-time': 12345678,
-                'voted-leader': '?',
-                'voted-leader-epoch': 0,
-            }]
+        [{
+            'down-after-milliseconds': 5000,
+            'flags': 's_down,sentinel',
+            'ip': '10.1.2.3',
+            'is_disconnected': False,
+            'is_master': False,
+            'is_master_down': False,
+            'is_odown': False,
+            'is_sdown': True,
+            'is_sentinel': True,
+            'is_slave': False,
+            'last-hello-message': 12345678,
+            'last-ok-ping-reply': 12345678,
+            'last-ping-reply': 12345679
+            'last-ping-sent': 12345678,
+            'name': '10.1.2.3:26379',
+            'link-pending-commands': 78,
+            'port': 26379,
+            'runid': '123456789abcdef',
+            's-down-time': 12345678,
+            'voted-leader': '?',
+            'voted-leader-epoch': 0,
+        }]
         """
         sentinels_stats = redis_conn.sentinel_sentinels(master_name)
         # sentinel_stats returns stats for other sentinels only
@@ -79,34 +97,34 @@ class RedisSentinelCheck(AgentCheck):
 
     def _process_slaves_stats(self, redis_conn, master_name, base_tags, master_tags):
         """
-            [{
-                'down-after-milliseconds': 5000,
-                'flags': 'slave',
-                'info-refresh': 2628,
-                'ip': '10.1.2.3',
-                'is_disconnected': False,
-                'is_master': False,
-                'is_master_down': False,
-                'is_odown': False,
-                'is_sdown': False,
-                'is_sentinel': False,
-                'is_slave': True
-                'last-ok-ping-reply': 429,
-                'last-ping-reply': 429,
-                'last-ping-sent': 0,
-                'master-host': '10.1.2.3',
-                'master-link-down-time': 0,
-                'master-link-status': 'ok',
-                'master-port': 6379,
-                'name': '10.1.2.3:6379',
-                'pending-commands': 0,
-                'port': 6379,
-                'role-reported': 'slave',
-                'role-reported-time': 3124725,
-                'runid': '123456789abcdef',
-                'slave-priority': 100,
-                'slave-repl-offset': 12345678,
-            }]
+        [{
+            'down-after-milliseconds': 5000,
+            'flags': 'slave',
+            'info-refresh': 2628,
+            'ip': '10.1.2.3',
+            'is_disconnected': False,
+            'is_master': False,
+            'is_master_down': False,
+            'is_odown': False,
+            'is_sdown': False,
+            'is_sentinel': False,
+            'is_slave': True
+            'last-ok-ping-reply': 429,
+            'last-ping-reply': 429,
+            'last-ping-sent': 0,
+            'master-host': '10.1.2.3',
+            'master-link-down-time': 0,
+            'master-link-status': 'ok',
+            'master-port': 6379,
+            'name': '10.1.2.3:6379',
+            'pending-commands': 0,
+            'port': 6379,
+            'role-reported': 'slave',
+            'role-reported-time': 3124725,
+            'runid': '123456789abcdef',
+            'slave-priority': 100,
+            'slave-repl-offset': 12345678,
+        }]
         """
         slaves_stats = redis_conn.sentinel_slaves(master_name)
         slaves_odown = 0

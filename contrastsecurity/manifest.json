@@ -19,13 +19,14 @@
     "log collection"
   ],
   "type": "check",
-  "is_public": false,
+  "is_public": true,
   "integration_id": "contrastsecurity",
   "assets": {
     "dashboards": {
       "Contrast Security Integration Overview": "assets/dashboards/contrast_security_protect.json"
     },
     "monitors": {},
-    "service_checks": "assets/service_checks.json"
+    "service_checks": "assets/service_checks.json",
+    "metrics_metadata": "metadata.csv"
   }
 }

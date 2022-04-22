@@ -16,15 +16,15 @@
   ],
   "public_title": "Datadog-Blue Matador Integration",
   "categories": [
-    "aws",
     "monitoring"
   ],
-  "type": "check",
+  "type": "crawler",
   "is_public": true,
   "integration_id": "blue-matador",
   "assets": {
     "dashboards": {},
     "monitors": {},
-    "service_checks": "assets/service_checks.json"
+    "service_checks": "assets/service_checks.json",
+    "metrics_metadata": "metadata.csv"
   }
 }

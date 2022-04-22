@@ -1,6 +1,7 @@
 {
   "integration_id": "bind9",
   "metric_prefix": "bind9.",
+  "metric_to_check": "bind9.nsstat_AuthQryRej",
   "categories": [
     "monitoring"
   ],
@@ -23,6 +24,7 @@
   "assets": {
     "monitors": {},
     "dashboards": {},
-    "service_checks": "/assets/service_checks.json"
+    "service_checks": "assets/service_checks.json",
+    "metrics_metadata": "metadata.csv"
   }
 }

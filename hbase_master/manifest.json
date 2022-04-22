@@ -15,14 +15,23 @@
   ],
   "public_title": "Datadog-Hbase Master Integration",
   "categories": [
-    "data store"
+    "data store",
+    "log collection"
   ],
   "type": "check",
   "is_public": true,
   "metric_prefix": "hbase.",
+  "metric_to_check": "hbase.master.assignmentmanager.rit_oldest_age",
   "assets": {
+    "configuration": {
+      "spec": "assets/configuration/spec.yaml"
+    },
     "monitors": {},
     "dashboards": {},
-    "service_checks": "/assets/service_checks.json"
+    "service_checks": "assets/service_checks.json",
+    "logs": {
+      "source": "hbase"
+    },
+    "metrics_metadata": "metadata.csv"
   }
 }

@@ -16,15 +16,16 @@
   ],
   "public_title": "Datadog-Lacework Integration",
   "categories": [
-    "security", 
+    "security",
     "log collection"
   ],
-  "type": "check",
-  "is_public": false,
+  "type": "crawler",
+  "is_public": true,
   "integration_id": "lacework",
   "assets": {
     "dashboards": {},
     "monitors": {},
-    "service_checks": "assets/service_checks.json"
+    "service_checks": "assets/service_checks.json",
+    "metrics_metadata": "metadata.csv"
   }
 }

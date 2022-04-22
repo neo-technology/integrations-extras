@@ -11,7 +11,7 @@ import pytest
 
 from datadog_checks.filebeat import FilebeatCheck
 
-from .common import registry_file_path
+from .common import BAD_ENDPOINT, registry_file_path
 
 mocked_file_stats = namedtuple("mocked_file_stats", ["st_size", "st_ino", "st_dev"])
 
@@ -29,8 +29,13 @@ def mocked_os_stat(mocked_paths_and_stats):
     return mock.patch.object(os, "stat", side_effect=internal_mock)
 
 
-def _build_instance(name, stats_endpoint=None, only_metrics=None, timeout=None):
+def _build_instance(
+    name, ignore_registry=None, stats_endpoint=None, only_metrics=None, timeout=None, normalize_metrics=None
+):
     instance = {"registry_file_path": registry_file_path(name)}
+
+    if ignore_registry is not None:
+        instance["ignore_registry"] = ignore_registry
 
     if stats_endpoint is not None:
         instance["stats_endpoint"] = stats_endpoint
@@ -41,18 +46,22 @@ def _build_instance(name, stats_endpoint=None, only_metrics=None, timeout=None):
     if timeout is not None:
         instance["timeout"] = timeout
 
+    if normalize_metrics is not None:
+        instance["normalize_metrics"] = normalize_metrics
+
     return instance
 
 
 def test_registry_happy_path(aggregator):
-    check = FilebeatCheck("filebeat", {}, {})
+    config = _build_instance("happy_path")
+    check = FilebeatCheck("filebeat", {}, [config])
     with mocked_os_stat(
         {
             "/test_dd_agent/var/log/nginx/access.log": mocked_file_stats(394154, 277025, 51713),
             "/test_dd_agent/var/log/syslog": mocked_file_stats(1024917, 152172, 51713),
         }
     ):
-        check.check(_build_instance("happy_path"))
+        check.check(config)
 
     aggregator.assert_metric(
         "filebeat.registry.unprocessed_bytes", value=2407, tags=["source:/test_dd_agent/var/log/nginx/access.log"]
@@ -64,14 +73,15 @@ def test_registry_happy_path(aggregator):
 
 # tests that we still support the format from filebeat < 5
 def test_registry_happy_path_with_legacy_format(aggregator):
-    check = FilebeatCheck("filebeat", {}, {})
+    config = _build_instance("happy_path_legacy_format")
+    check = FilebeatCheck("filebeat", {}, [config])
     with mocked_os_stat(
         {
             "/test_dd_agent/var/log/nginx/access.log": mocked_file_stats(394154, 277025, 51713),
             "/test_dd_agent/var/log/syslog": mocked_file_stats(1024917, 152172, 51713),
         }
     ):
-        check.check(_build_instance("happy_path_legacy_format"))
+        check.check(config)
 
     aggregator.assert_metric(
         "filebeat.registry.unprocessed_bytes", value=2407, tags=["source:/test_dd_agent/var/log/nginx/access.log"]
@@ -89,29 +99,57 @@ def test_bad_config():
 
 
 def test_missing_registry_file(aggregator):
-    check = FilebeatCheck("filebeat", {}, {})
+    config = _build_instance("i_dont_exist")
+    check = FilebeatCheck("filebeat", {}, [config])
     # tests that it simply silently ignores it
-    check.check(_build_instance("i_dont_exist"))
+    check.check(config)
     aggregator.assert_metric("filebeat.registry.unprocessed_bytes", count=0)
 
 
+@pytest.mark.usefixtures('dd_environment')
+def test_ignore_registry(aggregator, instance):
+    instance['registry_file_path'] = "malformed_json"
+    instance["ignore_registry"] = True
+    check = FilebeatCheck("filebeat", {}, [instance])
+    # test that it silently ignores the registry file
+    # and does the http check
+    check.check(instance)
+    tags = ["stats_endpoint:{}".format(instance['stats_endpoint'])]
+    aggregator.assert_service_check("filebeat.can_connect", status=FilebeatCheck.OK, tags=tags)
+
+
+@pytest.mark.usefixtures('dd_environment')
+def test_instance_tags(aggregator, instance):
+    instance['registry_file_path'] = "happy_path"
+    instance['tags'] = ["foo:bar"]
+    check = FilebeatCheck("filebeat", {}, [instance])
+    # test that it uses both the instance tags and the
+    # `stats_endpoint` tag generated
+    check.check(instance)
+    tags = instance['tags'] + ["stats_endpoint:{}".format(instance['stats_endpoint'])]
+    aggregator.assert_service_check("filebeat.can_connect", status=FilebeatCheck.OK, tags=tags)
+
+
 def test_missing_source_file(aggregator):
-    check = FilebeatCheck("filebeat", {}, {})
-    check.check(_build_instance("missing_source_file"))
+    config = _build_instance("missing_source_file")
+    check = FilebeatCheck("filebeat", {}, [config])
+    check.check(config)
     aggregator.assert_metric("filebeat.registry.unprocessed_bytes", count=0)
 
 
 def test_source_file_inode_has_changed(aggregator):
-    check = FilebeatCheck("filebeat", {}, {})
+    config = _build_instance("single_source")
+    check = FilebeatCheck("filebeat", {}, [config])
     with mocked_os_stat({"/test_dd_agent/var/log/syslog": mocked_file_stats(1024917, 152171, 51713)}):
-        check.check(_build_instance("single_source"))
+        check.check(config)
     aggregator.assert_metric("filebeat.registry.unprocessed_bytes", count=0)
 
 
 def test_source_file_device_has_changed(aggregator):
-    check = FilebeatCheck("filebeat", {}, {})
+    config = _build_instance("single_source")
+    check = FilebeatCheck("filebeat", {}, [config])
     with mocked_os_stat({"/test_dd_agent/var/log/syslog": mocked_file_stats(1024917, 152171, 51714)}):
-        check.check(_build_instance("single_source"))
+        check.check(config)
     aggregator.assert_metric("filebeat.registry.unprocessed_bytes", count=0)
 
 
@@ -217,7 +255,7 @@ def mock_request(body_update=None):
 
 def test_happy_path(aggregator):
     config = _build_instance("empty", stats_endpoint="http://localhost:9999")
-    check = FilebeatCheck("filebeat", {}, {})
+    check = FilebeatCheck("filebeat", {}, [config])
     tags = ["stats_endpoint:http://localhost:9999"]
 
     # the first run shouldn't yield any increment metric, but it should
@@ -245,7 +283,7 @@ def test_happy_path_with_an_only_metrics_list(aggregator):
     config = _build_instance(
         "empty", stats_endpoint="http://localhost:9999", only_metrics=[r"^libbeat.kafka", r"truncated$"]
     )
-    check = FilebeatCheck("filebeat", {}, {})
+    check = FilebeatCheck("filebeat", {}, [config])
     tags = ["stats_endpoint:http://localhost:9999"]
 
     with mock_request():
@@ -276,7 +314,7 @@ def test_happy_path_with_an_only_metrics_list(aggregator):
 
 def test_with_an_invalid_regex_in_the_only_metrics_list():
     config = _build_instance("empty", stats_endpoint="http://localhost:9999", only_metrics=["invalid regex ["])
-    check = FilebeatCheck("filebeat", {}, {})
+    check = FilebeatCheck("filebeat", {}, [config])
 
     expected_message = (
         'Invalid only_metric regex for filebeat: "invalid regex [", ' "error: unexpected end of regular expression"
@@ -290,7 +328,7 @@ def test_with_an_invalid_regex_in_the_only_metrics_list():
 def test_regexes_only_get_compiled_and_run_once():
     regex = r"^libbeat.kafka"
     config = _build_instance("empty", stats_endpoint="http://localhost:9999", only_metrics=[regex])
-    check = FilebeatCheck("filebeat", {}, {})
+    check = FilebeatCheck("filebeat", {}, [config])
 
     with mock_request():
         # the 1st run should compile regexes & run regexes
@@ -316,7 +354,7 @@ def test_regexes_only_get_compiled_and_run_once():
 
 def test_when_filebeat_restarts(aggregator):
     config = _build_instance("empty", stats_endpoint="http://localhost:9999")
-    check = FilebeatCheck("filebeat", {}, {})
+    check = FilebeatCheck("filebeat", {}, [config])
 
     with mock_request():
         check.check(config)
@@ -343,7 +381,7 @@ def test_when_filebeat_restarts(aggregator):
 
 def test_when_the_http_call_times_out(aggregator):
     config = _build_instance("empty", stats_endpoint="http://localhost:9999")
-    check = FilebeatCheck("filebeat", {}, {})
+    check = FilebeatCheck("filebeat", {}, [config])
 
     request_failure = mock.Mock()
     request_failure.raise_for_status.side_effect = Exception("Error")
@@ -355,14 +393,14 @@ def test_when_the_http_call_times_out(aggregator):
 
 def test_when_the_http_connection_is_refused(aggregator):
     config = _build_instance("empty", stats_endpoint="http://0.28.28.0:9999")
-    check = FilebeatCheck("filebeat", {}, {})
+    check = FilebeatCheck("filebeat", {}, [config])
     check.check(config)
     aggregator.assert_metric("filebeat.harvester.running", count=0)
 
 
 def test_with_two_different_instances(aggregator):
     config = _build_instance("empty", stats_endpoint="http://localhost:9999")
-    check = FilebeatCheck("filebeat", {}, {})
+    check = FilebeatCheck("filebeat", {}, [config])
     tags = ["stats_endpoint:http://localhost:9999"]
 
     with mock_request():
@@ -399,7 +437,7 @@ def test_with_two_different_instances(aggregator):
 
 def _assert_config_raises(profiler_config, expected_substring):
     bad_config = _build_instance(profiler_config)
-    check = FilebeatCheck("filebeat", {}, {})
+    check = FilebeatCheck("filebeat", {}, [bad_config])
     with pytest.raises(Exception) as excinfo:
         check.check(bad_config)
         assert expected_substring in excinfo.value
@@ -430,10 +468,93 @@ def test_negative_timeout():
     _assert_config_raises({"port": 82, "timeout": -0.5}, "must be a positive number")
 
 
-def test_check(aggregator, dd_environment):
-    check = FilebeatCheck("filebeat", {}, {})
-    check.check(dd_environment)
-    check.check(dd_environment)
-    tags = ["stats_endpoint:{}".format(dd_environment["stats_endpoint"])]
+@pytest.mark.parametrize(
+    'init_config, instance, expected_timeout',
+    [
+        pytest.param({}, _build_instance("empty", stats_endpoint="http://localhost:9999", timeout=8), (8.0, 8.0)),
+        pytest.param({'timeout': 8}, _build_instance("empty", stats_endpoint="http://localhost:9999"), (8.0, 8.0)),
+        pytest.param({}, _build_instance("empty", stats_endpoint="http://localhost:9999"), (2.0, 2.0)),
+    ],
+)
+def test_default_timeout(init_config, instance, expected_timeout):
+    check = FilebeatCheck("filebeat", init_config, [instance])
+    assert check.http.options['timeout'] == expected_timeout
+
+
+@pytest.mark.integration
+@pytest.mark.usefixtures('dd_environment')
+def test_check(aggregator, instance):
+    check = FilebeatCheck("filebeat", {}, [instance])
+    check.check(instance)
+    check.check(instance)
+    tags = ["stats_endpoint:{}".format(instance['stats_endpoint'])]
     aggregator.assert_metric("filebeat.harvester.running", metric_type=aggregator.GAUGE, count=2, tags=tags)
     aggregator.assert_metric("libbeat.config.module.starts", metric_type=aggregator.COUNTER, count=1, tags=tags)
+    aggregator.assert_service_check("filebeat.can_connect", status=FilebeatCheck.OK, tags=tags)
+
+
+@pytest.mark.integration
+@pytest.mark.usefixtures('dd_environment')
+def test_check_fail(aggregator, instance):
+    instance['stats_endpoint'] = BAD_ENDPOINT
+    check = FilebeatCheck("filebeat", {}, [instance])
+    check.check(instance)
+    aggregator.assert_service_check("filebeat.can_connect", status=FilebeatCheck.CRITICAL, tags=[])
+    assert len(aggregator._metrics) == 0
+
+
+def test_normalize_metrics(aggregator):
+    config = _build_instance("empty", stats_endpoint="http://localhost:9999", normalize_metrics=True)
+    check = FilebeatCheck("filebeat", {}, [config])
+    tags = ["stats_endpoint:http://localhost:9999"]
+
+    with mock_request():
+        check.check(config)
+
+    aggregator.assert_metric("filebeat.harvester.running", metric_type=aggregator.GAUGE, tags=tags)
+
+    with mock_request(
+        {"filebeat.libbeat.logstash.published_and_acked_events": 1138956, "filebeat.harvester.running": 9}
+    ):
+        check.check(config)
+
+    aggregator.assert_metric(
+        "filebeat.libbeat.logstash.published_and_acked_events", metric_type=aggregator.COUNTER, tags=tags
+    )
+    aggregator.assert_metric(
+        "filebeat.libbeat.kafka.published_and_acked_events", metric_type=aggregator.COUNTER, tags=tags
+    )
+    aggregator.assert_metric("filebeat.harvester.running", metric_type=aggregator.GAUGE, tags=tags)
+
+
+def test_normalize_metrics_with_an_only_metrics_list(aggregator):
+    config = _build_instance(
+        "empty",
+        stats_endpoint="http://localhost:9999",
+        only_metrics=[r"^libbeat.kafka", r"truncated$"],
+        normalize_metrics=True,
+    )
+    check = FilebeatCheck("filebeat", {}, [config])
+    tags = ["stats_endpoint:http://localhost:9999"]
+
+    with mock_request():
+        check.check(config)
+
+    with mock_request(
+        {
+            "filebeat.libbeat.logstash.published_and_acked_events": 1138956,
+            "libbeat.kafka.published_and_acked_events": 12,
+        }
+    ):
+        check.check(config)
+
+    aggregator.assert_metric(
+        "filebeat.libbeat.kafka.published_and_acked_events", metric_type=aggregator.COUNTER, value=12, tags=tags
+    )
+    aggregator.assert_metric(
+        "filebeat.libbeat.kafka.published_but_not_acked_events", metric_type=aggregator.COUNTER, value=0, tags=tags
+    )
+    aggregator.assert_metric(
+        "filebeat.libbeat.kafka.call_count.PublishEvents", metric_type=aggregator.COUNTER, value=0, tags=tags
+    )
+    aggregator.assert_metric("filebeat.harvester.files.truncated", metric_type=aggregator.COUNTER, value=0, tags=tags)

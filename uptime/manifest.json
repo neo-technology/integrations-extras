@@ -19,11 +19,12 @@
   "categories": [
     "os & system"
   ],
-  "type": "check",
+  "type": "crawler",
   "is_public": true,
   "assets": {
     "monitors": {},
     "dashboards": {},
-    "service_checks": "/assets/service_checks.json"
+    "service_checks": "assets/service_checks.json",
+    "metrics_metadata": "metadata.csv"
   }
 }
