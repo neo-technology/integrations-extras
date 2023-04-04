@@ -268,6 +268,7 @@ class Neo4jCheck(PrometheusCheck):
             'page_cache_page_faults_total': 'page_cache.page_faults',
             'page_cache_pins_total': 'page_cache.pins',
             'page_cache_unpins_total': 'page_cache.unpins',
+            'page_cache_usage_ratio': 'page_cache.usage_ratio',
             #
             # server metrics
             'server_threads_jetty_all': 'server.threads.jetty.all',
