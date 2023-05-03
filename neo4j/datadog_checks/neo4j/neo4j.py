@@ -356,5 +356,6 @@ class Neo4jCheck(PrometheusCheck):
             'db_query_execution_latency_millis': 'db.query.execution.latency.millis',
 
             # GDS metrics
-            'gds_graphs_created': 'gds.graphs_created',
+            'gds.neo4j_graphs_created': 'gds.neo4j.graphs_created',
+            'gds.system_graphs_created': 'gds.system.graphs_created',
         }
