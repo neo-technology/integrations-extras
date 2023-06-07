@@ -400,6 +400,7 @@ class Neo4jCheck(PrometheusCheck):
 
             # GDS metrics
             'gds_graphs_created': 'gds.graphs_created',
+            'gds_models_created': 'gds.models_created',
             'gds_aura_shutdown_time': 'gds.aura.shutdown_time',
             'gds_aura_shutdown_failed': 'gds.aura.shutdown_failed',
             'gds_aura_backup_time': 'gds.aura.backup_time',
