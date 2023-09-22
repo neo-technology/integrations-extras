@@ -106,7 +106,7 @@ class Neo4jCheck(PrometheusCheck):
             if meta_map and db_name in meta_map:
                 tags.extend(meta_map[db_name])
 
-            self.process_metric(message=metric, custom_tags=tags, ignore_unmapped=True)
+            self.process_metric(message=metric, custom_tags=tags, ignore_unmapped=True, send_monotonic_counter=True)
 
     def _check_legacy_metrics(self, metrics, config, meta_map):
         for metric in metrics:
@@ -128,7 +128,7 @@ class Neo4jCheck(PrometheusCheck):
             if meta_map and db_name in meta_map:
                 tags.extend(meta_map[db_name])
 
-            self.process_metric(message=metric, custom_tags=tags, ignore_unmapped=True)
+            self.process_metric(message=metric, custom_tags=tags, ignore_unmapped=True, send_monotonic_counter=True)
 
     def _get_db_for_metric(self, dbs, metric_name):
         for db in dbs:
