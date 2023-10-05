@@ -52,7 +52,7 @@ class Neo4jCheck(PrometheusCheck):
                 metadata_info_metric = metric
                 continue
 
-            if metric.name.startswith("neo4j_dbms_") or metric.name.startswith("neo4j_database_"):
+            if metric.name.startswith("neo4j_dbms_") or metric.name.startswith("neo4j_database_") or metric.name.startswith("gds"):
                 is_namespaced = True
 
             if metadata_info_metric is not None:
@@ -89,6 +89,8 @@ class Neo4jCheck(PrometheusCheck):
             if metric.name == "metadata_info":
                 continue
 
+            send_monotonic_counter=False
+
             if metric.name.startswith("neo4j_dbms_"):
                 db_name = GLOBAL_DB_NAME
                 metric.name = metric.name.replace("neo4j_dbms_", "", 1)
@@ -98,15 +100,22 @@ class Neo4jCheck(PrometheusCheck):
                 # Exclude databases not in neo4j_dbs, if that config is set
                 if config.neo4j_dbs and db_name not in config.neo4j_dbs:
                     continue
+            elif metric.name.startswith("gds"):
+                db_name = ""
+                send_monotonic_counter=True
 
-            tags = ['db_name:{}'.format(db_name)]
+            tags = []
+
+            if db_name: 
+                tags.extend(['db_name:{}'.format(db_name)])
+
             if config.instance_tags:
                 tags.extend(config.instance_tags.copy())
 
             if meta_map and db_name in meta_map:
                 tags.extend(meta_map[db_name])
 
-            self.process_metric(message=metric, custom_tags=tags, ignore_unmapped=True)
+            self.process_metric(message=metric, custom_tags=tags, ignore_unmapped=True, send_monotonic_counter=send_monotonic_counter)
 
     def _check_legacy_metrics(self, metrics, config, meta_map):
         for metric in metrics:
