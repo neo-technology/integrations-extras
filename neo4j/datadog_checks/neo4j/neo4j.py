@@ -120,8 +120,6 @@ class Neo4jCheck(PrometheusCheck):
             if meta_map and db_name in meta_map:
                 tags.extend(meta_map[db_name])
 
-            print('received namespaced metric' + metric.name + ' monotonic ' + str(send_monotonic_counter))
-
             self.process_metric(
                 message=metric, custom_tags=tags,
                 ignore_unmapped=True,
