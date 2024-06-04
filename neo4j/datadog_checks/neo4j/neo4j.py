@@ -105,7 +105,8 @@ class Neo4jCheck(PrometheusCheck):
                 db_name = ""
                 send_monotonic_counter = True
                 send_buckets = True
-            elif metric.name.endswith("_total"):
+
+            if "cypher_internal_notification_count" in metric.name:
                 send_monotonic_counter = True
 
             tags = []
@@ -118,6 +119,8 @@ class Neo4jCheck(PrometheusCheck):
 
             if meta_map and db_name in meta_map:
                 tags.extend(meta_map[db_name])
+
+            print('received namespaced metric' + metric.name + ' monotonic ' + str(send_monotonic_counter))
 
             self.process_metric(
                 message=metric, custom_tags=tags,
