@@ -105,6 +105,8 @@ class Neo4jCheck(PrometheusCheck):
                 db_name = ""
                 send_monotonic_counter = True
                 send_buckets = True
+            elif metric.name.endswith("_total"):
+                send_monotonic_counter = True
 
             tags = []
 
