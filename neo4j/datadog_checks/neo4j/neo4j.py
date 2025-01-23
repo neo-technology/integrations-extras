@@ -92,8 +92,6 @@ class Neo4jCheck(PrometheusCheck):
             send_monotonic_counter = False
             send_buckets = False
 
-            print('received metric ' + metric.name + ' monotonic ' + str(send_monotonic_counter))
-
             if metric.name.startswith("neo4j_dbms_"):
                 db_name = GLOBAL_DB_NAME
                 metric.name = metric.name.replace("neo4j_dbms_", "", 1)
@@ -110,12 +108,6 @@ class Neo4jCheck(PrometheusCheck):
 
             if "cypher_internal_notification_count" in metric.name:
                 send_monotonic_counter = True
-
-
-            try:
-                print('db_name of received metric ' + metric.name + ':' + str(db_name))
-            except:
-                print("An exception occurred for " + metric.name)
 
             tags = []
 
