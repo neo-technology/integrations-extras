@@ -86,7 +86,7 @@ class Neo4jCheck(PrometheusCheck):
 
     def _check_namespaced_metrics(self, metrics, config, meta_map):
         for metric in metrics:
-            if metric.name == "metadata_info":
+            if metric.name == "metadata_info" or metric.name.startswith("dbms_internal"):
                 continue
 
             send_monotonic_counter = False
