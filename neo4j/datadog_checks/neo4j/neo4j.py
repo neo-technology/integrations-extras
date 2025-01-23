@@ -86,7 +86,7 @@ class Neo4jCheck(PrometheusCheck):
 
     def _check_namespaced_metrics(self, metrics, config, meta_map):
         for metric in metrics:
-            if metric.name == "metadata_info":
+            if metric.name == "metadata_info" or metric.name.startswith("dbms_internal"):
                 continue
 
             send_monotonic_counter = False
@@ -314,6 +314,7 @@ class Neo4jCheck(PrometheusCheck):
             'ids_in_use_relationship': 'ids_in_use.relationship',
             'ids_in_use_relationship_type': 'ids_in_use.relationship_type',
             'store_size_total': 'store.size.total',
+            'store_size_full': 'store.size.total',
             'store_size_database': 'store.size.database',
             #
             # database transaction log metrics
